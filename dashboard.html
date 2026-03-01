@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SentinelHQ</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg:#07090d;--surface:#0d1117;--surface2:#161b22;--surface3:#1c2230;
+  --border:#21272f;--accent:#00e5ff;--red:#ff4757;--yellow:#ffa502;
+  --green:#2ed573;--text:#e6edf3;--muted:#7d8590;--discord:#5865F2;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 50% at 50% -20%,rgba(0,229,255,0.07),transparent);pointer-events:none;z-index:0;}
+
+/* SIDEBAR */
+.sidebar{width:255px;background:var(--surface);border-right:1px solid var(--border);position:fixed;top:0;left:0;bottom:0;display:flex;flex-direction:column;overflow-y:auto;z-index:10;}
+.logo{padding:1.4rem 1.2rem;border-bottom:1px solid var(--border);font-size:1.25rem;font-weight:800;letter-spacing:-0.5px;}
+.logo span{color:var(--accent);}
+.logo sub{font-size:0.6rem;font-family:'Space Mono',monospace;color:var(--muted);font-weight:400;margin-left:5px;vertical-align:middle;}
+.section-label{padding:1rem 1rem 0.4rem;font-size:0.6rem;font-family:'Space Mono',monospace;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;}
+.server-list{padding:0.4rem 0.6rem;}
+.server-item{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:8px;cursor:pointer;transition:all .15s;margin-bottom:2px;position:relative;}
+.server-item:hover{background:var(--surface2);}
+.server-item.active{background:var(--surface3);}
+.srv-av{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.8rem;flex-shrink:0;overflow:hidden;}
+.srv-av img{width:100%;height:100%;object-fit:cover;}
+.srv-name{font-size:0.83rem;font-weight:600;}
+.srv-count{font-size:0.68rem;color:var(--muted);font-family:'Space Mono',monospace;}
+.no-bot{position:absolute;right:10px;font-size:0.6rem;background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:2px 6px;border-radius:4px;}
+.nav{padding:0.4rem 0.6rem;margin-top:auto;}
+.nav-item{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:8px;cursor:pointer;color:var(--muted);font-size:0.83rem;transition:all .15s;margin-bottom:1px;}
+.nav-item:hover{background:var(--surface2);color:var(--text);}
+.nav-item.active{background:var(--surface3);color:var(--accent);}
+.nav-item svg{width:15px;height:15px;flex-shrink:0;}
+.user-bar{padding:0.9rem 1rem;border-top:1px solid var(--border);display:flex;align-items:center;gap:9px;}
+.u-av{width:32px;height:32px;border-radius:50%;overflow:hidden;background:var(--discord);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.75rem;}
+.u-av img{width:100%;height:100%;object-fit:cover;}
+.u-name{font-size:0.82rem;font-weight:600;}
+.u-tag{font-size:0.67rem;color:var(--muted);font-family:'Space Mono',monospace;}
+.logout-btn{margin-left:auto;background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.75rem;padding:4px 8px;border-radius:5px;transition:all .15s;}
+.logout-btn:hover{color:var(--red);background:rgba(255,71,87,0.1);}
+
+/* MAIN */
+.main{margin-left:255px;padding:2rem;position:relative;z-index:1;}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem;}
+.page-title{font-size:1.7rem;font-weight:800;letter-spacing:-0.5px;}
+.page-sub{color:var(--muted);font-size:0.8rem;font-family:'Space Mono',monospace;margin-top:3px;}
+.live-dot{width:7px;height:7px;background:var(--green);border-radius:50%;display:inline-block;margin-right:5px;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(46,213,115,.4);}50%{box-shadow:0 0 0 5px rgba(46,213,115,0);}}
+
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1rem;margin-bottom:1.5rem;}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.3rem;transition:border-color .2s;position:relative;overflow:hidden;}
+.stat:hover{border-color:var(--accent);}
+.stat::after{content:'';position:absolute;top:0;right:0;width:50px;height:50px;border-radius:0 12px 0 50px;opacity:.07;}
+.stat.c1::after{background:var(--accent);}
+.stat.c2::after{background:var(--red);}
+.stat.c3::after{background:var(--yellow);}
+.stat.c4::after{background:var(--green);}
+.stat-lbl{font-size:0.65rem;font-family:'Space Mono',monospace;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.4rem;}
+.stat-val{font-size:1.9rem;font-weight:800;letter-spacing:-1px;}
+.stat-chg{font-size:0.72rem;font-family:'Space Mono',monospace;margin-top:.25rem;color:var(--muted);}
+.stat-chg.up{color:var(--green);}
+.stat-chg.dn{color:var(--red);}
+
+/* CARDS */
+.grid2{display:grid;grid-template-columns:2fr 1fr;gap:1rem;margin-bottom:1.5rem;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.3rem;}
+.card-title{font-size:0.87rem;font-weight:600;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;}
+.badge-sm{font-size:0.62rem;font-family:'Space Mono',monospace;background:var(--surface3);border:1px solid var(--border);padding:2px 7px;border-radius:4px;color:var(--muted);}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:0.82rem;}
+th{text-align:left;padding:9px 10px;font-size:0.62rem;font-family:'Space Mono',monospace;color:var(--muted);text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--border);}
+td{padding:11px 10px;border-bottom:1px solid rgba(33,39,47,.5);vertical-align:middle;}
+tr:hover td{background:rgba(255,255,255,.015);}
+.member-info{display:flex;align-items:center;gap:9px;}
+.m-av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;flex-shrink:0;}
+.m-name{font-weight:600;font-size:.82rem;}
+.m-tag{font-size:.67rem;color:var(--muted);font-family:'Space Mono',monospace;}
+.tag{font-family:'Space Mono',monospace;font-size:.72rem;background:var(--surface2);padding:2px 7px;border-radius:4px;color:var(--muted);}
+.risk-wrap{width:75px;}
+.risk-bg{height:3px;background:var(--surface3);border-radius:2px;}
+.risk-bar{height:3px;border-radius:2px;}
+.risk-low{background:var(--green);}
+.risk-mid{background:var(--yellow);}
+.risk-high{background:var(--red);}
+.risk-lbl{font-size:.62rem;font-family:'Space Mono',monospace;color:var(--muted);margin-top:3px;}
+
+/* BADGES */
+.bdg{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:20px;font-size:.68rem;font-family:'Space Mono',monospace;font-weight:700;border:1px solid;}
+.bdg-dot{width:5px;height:5px;border-radius:50%;}
+.bdg.safe{color:var(--green);border-color:var(--green);background:rgba(46,213,115,.08);}
+.bdg.alt{color:var(--yellow);border-color:var(--yellow);background:rgba(255,165,2,.08);}
+.bdg.vpn{color:var(--red);border-color:var(--red);background:rgba(255,71,87,.08);}
+.bdg.safe .bdg-dot{background:var(--green);}
+.bdg.alt .bdg-dot{background:var(--yellow);}
+.bdg.vpn .bdg-dot{background:var(--red);}
+
+/* BUTTONS */
+.btn{background:none;border:1px solid var(--border);border-radius:7px;padding:6px 12px;color:var(--text);font-family:'Syne',sans-serif;font-size:.78rem;font-weight:600;cursor:pointer;transition:all .15s;}
+.btn:hover{border-color:var(--accent);color:var(--accent);}
+.btn.danger{border-color:var(--red);color:var(--red);}
+.btn.danger:hover{background:rgba(255,71,87,.1);}
+.btn.primary{background:var(--accent);color:var(--bg);border:none;font-weight:700;}
+.btn.primary:hover{opacity:.85;}
+
+/* ALERTS */
+.alert-list{display:flex;flex-direction:column;gap:.5rem;}
+.alert-item{display:flex;gap:9px;align-items:flex-start;padding:9px 11px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);font-size:.8rem;}
+.alert-ic{width:22px;height:22px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:.75rem;flex-shrink:0;}
+.alert-ic.r{background:rgba(255,71,87,.15);}
+.alert-ic.y{background:rgba(255,165,2,.15);}
+.alert-ic.g{background:rgba(46,213,115,.15);}
+.alert-time{font-size:.63rem;font-family:'Space Mono',monospace;color:var(--muted);margin-top:2px;}
+
+/* TABS */
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:1.2rem;}
+.tab{padding:9px 15px;font-size:.82rem;font-weight:600;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;transition:all .15s;margin-bottom:-1px;}
+.tab:hover{color:var(--text);}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+/* SEARCH */
+.search-row{display:flex;gap:.8rem;margin-bottom:1.2rem;}
+.search-inp{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 13px;color:var(--text);font-family:'Syne',sans-serif;font-size:.83rem;outline:none;transition:border-color .15s;}
+.search-inp:focus{border-color:var(--accent);}
+.search-inp::placeholder{color:var(--muted);}
+
+/* PAGE VISIBILITY */
+.page{display:none;}
+.page.active{display:block;}
+
+/* LOADING */
+.loading{display:flex;align-items:center;justify-content:center;padding:3rem;color:var(--muted);font-family:'Space Mono',monospace;font-size:.8rem;gap:10px;}
+.spinner{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* EMPTY */
+.empty{text-align:center;padding:3rem;color:var(--muted);font-family:'Space Mono',monospace;font-size:.82rem;}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+
+/* ANIM */
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+.anim{animation:fadeUp .35s ease forwards;}
+
+/* ADD BOT BANNER */
+.add-bot-banner{background:rgba(0,229,255,.07);border:1px solid rgba(0,229,255,.2);border-radius:10px;padding:1rem 1.2rem;margin-bottom:1.5rem;display:flex;align-items:center;justify-content:space-between;font-size:.85rem;}
+</style>
+</head>
+<body>
+
+<div style="display:flex;min-height:100vh;" id="app">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="logo">Sentinel<span>HQ</span><sub>v2</sub></div>
+
+    <div class="section-label">Your Servers</div>
+    <div class="server-list" id="server-list">
+      <div class="loading"><div class="spinner"></div>Loading...</div>
+    </div>
+
+    <div class="nav">
+      <div class="nav-item active" onclick="showPage('overview',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Overview
+      </div>
+      <div class="nav-item" onclick="showPage('members',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Members
+      </div>
+      <div class="nav-item" onclick="showPage('alts',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>Alt Detection
+      </div>
+      <div class="nav-item" onclick="showPage('vpn',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>VPN Scanner
+      </div>
+      <div class="nav-item" onclick="showPage('analytics',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Analytics
+      </div>
+    </div>
+
+    <div class="user-bar">
+      <div class="u-av" id="user-avatar">?</div>
+      <div>
+        <div class="u-name" id="user-name">Loading...</div>
+        <div class="u-tag" id="user-tag">#0000</div>
+      </div>
+      <button class="logout-btn" onclick="location.href='/logout'">logout</button>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- OVERVIEW -->
+    <div class="page active" id="page-overview">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Overview</div>
+          <div class="page-sub"><span class="live-dot"></span>Live — <span id="active-server-name">Select a server</span></div>
+        </div>
+      </div>
+      <div id="no-bot-banner" class="add-bot-banner" style="display:none;">
+        ⚠️ Bot is not in this server yet.
+        <a id="add-bot-link" href="#" target="_blank" class="btn primary" style="text-decoration:none;">+ Add Bot</a>
+      </div>
+      <div class="stats anim">
+        <div class="stat c1"><div class="stat-lbl">Total Members</div><div class="stat-val" id="stat-members">—</div><div class="stat-chg" id="stat-members-chg">Loading...</div></div>
+        <div class="stat c2"><div class="stat-lbl">Possible Alts</div><div class="stat-val" id="stat-alts">—</div><div class="stat-chg dn" id="stat-alts-chg">Pending review</div></div>
+        <div class="stat c3"><div class="stat-lbl">VPN Detected</div><div class="stat-val" id="stat-vpn">—</div><div class="stat-chg dn" id="stat-vpn-chg">Total detected</div></div>
+        <div class="stat c4"><div class="stat-lbl">Online Now</div><div class="stat-val" id="stat-online">—</div><div class="stat-chg" id="stat-online-chg">—</div></div>
+      </div>
+      <div class="grid2 anim">
+        <div class="card">
+          <div class="card-title">Member Growth <span class="badge-sm">Last 30 Days</span></div>
+          <canvas id="growthChart" height="110"></canvas>
+        </div>
+        <div class="card">
+          <div class="card-title">Threat Breakdown <span class="badge-sm">Total</span></div>
+          <canvas id="threatChart" height="110"></canvas>
+        </div>
+      </div>
+      <div class="card anim">
+        <div class="card-title">Recent Alerts</div>
+        <div class="alert-list" id="recent-alerts">
+          <div class="loading"><div class="spinner"></div>Loading...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MEMBERS -->
+    <div class="page" id="page-members">
+      <div class="topbar"><div><div class="page-title">Members</div><div class="page-sub" id="members-sub">Select a server</div></div></div>
+      <div class="search-row">
+        <input class="search-inp" id="member-search" placeholder="Search username..." oninput="filterMembers()" type="text">
+        <button class="btn" onclick="loadMembers()">↻ Refresh</button>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Member</th><th>Joined</th><th>Acct Age</th><th>Status</th><th>Risk</th></tr></thead>
+            <tbody id="members-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ALTS -->
+    <div class="page" id="page-alts">
+      <div class="topbar"><div><div class="page-title">Alt Detection</div><div class="page-sub">Flagged possible alts & ban evaders</div></div></div>
+      <div class="stats anim" style="grid-template-columns:repeat(3,1fr);">
+        <div class="stat c3"><div class="stat-lbl">Total Flagged</div><div class="stat-val" id="alt-total">—</div></div>
+        <div class="stat c2"><div class="stat-lbl">High Confidence</div><div class="stat-val" id="alt-high">—</div></div>
+        <div class="stat c4"><div class="stat-lbl">Dismissed</div><div class="stat-val" id="alt-dismissed">—</div></div>
+      </div>
+      <div class="tabs">
+        <div class="tab active" onclick="filterAlts('pending',this)">Pending</div>
+        <div class="tab" onclick="filterAlts('all',this)">All</div>
+        <div class="tab" onclick="filterAlts('banned',this)">Banned</div>
+        <div class="tab" onclick="filterAlts('dismissed',this)">Dismissed</div>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>User</th><th>Confidence</th><th>Reason</th><th>Joined</th><th>Actions</th></tr></thead>
+            <tbody id="alts-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- VPN -->
+    <div class="page" id="page-vpn">
+      <div class="topbar"><div><div class="page-title">VPN Scanner</div><div class="page-sub">Members detected using VPN / Proxy / Tor — IPs hidden from all users</div></div></div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>User</th><th>Type</th><th>Provider</th><th>Country</th><th>Detected</th></tr></thead>
+            <tbody id="vpn-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ANALYTICS -->
+    <div class="page" id="page-analytics">
+      <div class="topbar"><div><div class="page-title">Analytics</div><div class="page-sub">Detailed server trends</div></div></div>
+      <div class="grid2 anim">
+        <div class="card"><div class="card-title">30-Day Growth</div><canvas id="analyticsGrowth" height="130"></canvas></div>
+        <div class="card"><div class="card-title">Join vs Leave</div><canvas id="joinLeaveChart" height="130"></canvas></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ─── STATE ───
+let currentGuildId = null;
+let allMembers  = [];
+let allAlts     = [];
+let growthChart = null;
+let threatChart = null;
+const chartDefaults = {
+  plugins:{legend:{labels:{color:'#7d8590',font:{family:'Space Mono',size:10}}}},
+  scales:{x:{grid:{color:'#21272f'},ticks:{color:'#7d8590',font:{family:'Space Mono',size:9}}},
+          y:{grid:{color:'#21272f'},ticks:{color:'#7d8590',font:{family:'Space Mono',size:9}}}}
+};
+
+// ─── INIT ───
+async function init() {
+  try {
+    const user = await api('/api/me');
+    document.getElementById('user-name').textContent = user.username;
+    document.getElementById('user-tag').textContent  = `#${user.discriminator || '0'}`;
+    if (user.avatar) {
+      const av = document.getElementById('user-avatar');
+      av.innerHTML = `<img src="https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png" alt="">`;
+    } else {
+      document.getElementById('user-avatar').textContent = user.username[0].toUpperCase();
+    }
+    await loadGuilds();
+  } catch(e) {
+    console.error('Init failed', e);
+  }
+}
+
+async function loadGuilds() {
+  const guilds = await api('/api/guilds');
+  const list   = document.getElementById('server-list');
+  if (!guilds || guilds.length === 0) {
+    list.innerHTML = '<div class="empty">No servers found.<br>Make sure you have Manage Server permission.</div>';
+    return;
+  }
+  list.innerHTML = guilds.map((g,i) => `
+    <div class="server-item${i===0?' active':''}" onclick="selectGuild('${g.id}','${escHtml(g.name)}',${g.bot_added},this)">
+      <div class="srv-av" style="background:${guildColor(g.id)};">
+        ${g.icon ? `<img src="https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png" alt="">` : g.name.slice(0,2).toUpperCase()}
+      </div>
+      <div>
+        <div class="srv-name">${escHtml(g.name)}</div>
+        <div class="srv-count">${g.members ? g.members.toLocaleString()+' members' : '—'}</div>
+      </div>
+      ${!g.bot_added ? '<span class="no-bot">no bot</span>' : ''}
+    </div>
+  `).join('');
+  // Select first guild
+  const first = guilds[0];
+  selectGuild(first.id, first.name, first.bot_added, list.querySelector('.server-item'));
+}
+
+function selectGuild(id, name, botAdded, el) {
+  document.querySelectorAll('.server-item').forEach(s => s.classList.remove('active'));
+  el.classList.add('active');
+  currentGuildId = id;
+  document.getElementById('active-server-name').textContent = name;
+  document.getElementById('members-sub').textContent = `All members in ${name}`;
+
+  // Show/hide add bot banner
+  const banner = document.getElementById('no-bot-banner');
+  if (!botAdded) {
+    banner.style.display = 'flex';
+    document.getElementById('add-bot-link').href =
+      `https://discord.com/oauth2/authorize?client_id=${CLIENT_ID}&scope=bot+applications.commands&permissions=8&guild_id=${id}`;
+  } else {
+    banner.style.display = 'none';
+  }
+
+  loadOverview();
+}
+
+// ─── API ───
+async function api(url, opts={}) {
+  const r = await fetch(url, opts);
+  if (!r.ok) throw new Error(`API ${url} returned ${r.status}`);
+  return r.json();
+}
+
+// ─── OVERVIEW ───
+async function loadOverview() {
+  if (!currentGuildId) return;
+  try {
+    const data = await api(`/api/guild/${currentGuildId}/stats`);
+
+    document.getElementById('stat-members').textContent = data.member_count?.toLocaleString() || '—';
+    document.getElementById('stat-alts').textContent    = data.flagged_alts ?? '—';
+    document.getElementById('stat-vpn').textContent     = data.vpn_detections ?? '—';
+    document.getElementById('stat-online').textContent  = '—'; // would need presence intent
+
+    // Growth chart
+    if (growthChart) growthChart.destroy();
+    const history = data.history || [];
+    growthChart = new Chart(document.getElementById('growthChart'), {
+      type: 'line',
+      data: {
+        labels: history.map(h => h.date.slice(5)),
+        datasets: [{
+          label: 'Members',
+          data: history.map(h => h.count),
+          borderColor: '#00e5ff',
+          backgroundColor: 'rgba(0,229,255,0.06)',
+          fill: true, tension: 0.4, pointRadius: 2, pointBackgroundColor: '#00e5ff'
+        }]
+      },
+      options: { ...chartDefaults, responsive: true }
+    });
+
+    // Threat doughnut
+    if (threatChart) threatChart.destroy();
+    const safe = Math.max(0, (data.member_count||0) - (data.flagged_alts||0) - (data.vpn_detections||0));
+    threatChart = new Chart(document.getElementById('threatChart'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Safe', 'Possible Alt', 'VPN/Proxy'],
+        datasets: [{
+          data: [safe, data.flagged_alts||0, data.vpn_detections||0],
+          backgroundColor: ['rgba(46,213,115,.8)','rgba(255,165,2,.8)','rgba(255,71,87,.8)'],
+          borderColor: '#07090d', borderWidth: 3
+        }]
+      },
+      options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#7d8590', font: { family: 'Space Mono', size: 10 }, padding: 10 } } } }
+    });
+
+    // Recent alerts from alts + vpn
+    buildAlerts(data);
+
+  } catch(e) {
+    console.error('Overview load error', e);
+  }
+}
+
+function buildAlerts(data) {
+  const el = document.getElementById('recent-alerts');
+  if (!data.flagged_alts && !data.vpn_detections) {
+    el.innerHTML = '<div class="empty">✅ No recent alerts</div>';
+    return;
+  }
+  el.innerHTML = `
+    ${data.vpn_detections > 0 ? `<div class="alert-item"><div class="alert-ic r">⚠</div><div><div><strong>VPN Detections</strong> — ${data.vpn_detections} member(s) detected using VPN/Proxy</div><div class="alert-time">Check VPN Scanner tab</div></div></div>` : ''}
+    ${data.flagged_alts > 0 ? `<div class="alert-item"><div class="alert-ic y">🔍</div><div><div><strong>Possible Alts</strong> — ${data.flagged_alts} account(s) flagged for review</div><div class="alert-time">Check Alt Detection tab</div></div></div>` : ''}
+    <div class="alert-item"><div class="alert-ic g">ℹ</div><div><div><strong>Server has ${data.member_count?.toLocaleString()} members</strong></div><div class="alert-time">Updated now</div></div></div>
+  `;
+}
+
+// ─── MEMBERS ───
+async function loadMembers() {
+  if (!currentGuildId) return;
+  const tbody = document.getElementById('members-tbody');
+  tbody.innerHTML = '<tr><td colspan="5"><div class="loading"><div class="spinner"></div>Loading...</div></td></tr>';
+  // Note: Discord API doesn't give us full member list easily without gateway
+  // Show note to user
+  tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--muted);font-family:'Space Mono',monospace;font-size:.8rem;">
+    Member list requires the bot to be in your server and uses gateway data.<br>
+    Use <strong>/stats</strong> in Discord to see member counts, or check the Alt Detection tab for flagged members.
+  </td></tr>`;
+}
+
+function filterMembers() {}
+
+// ─── ALTS ───
+async function loadAlts() {
+  if (!currentGuildId) return;
+  const tbody = document.getElementById('alts-tbody');
+  tbody.innerHTML = '<tr><td colspan="5"><div class="loading"><div class="spinner"></div>Loading...</div></td></tr>';
+  try {
+    allAlts = await api(`/api/guild/${currentGuildId}/alts`);
+    renderAlts('pending');
+    document.getElementById('alt-total').textContent     = allAlts.length;
+    document.getElementById('alt-high').textContent      = allAlts.filter(a => a.score >= 85).length;
+    document.getElementById('alt-dismissed').textContent = allAlts.filter(a => a.status === 'dismissed').length;
+  } catch(e) {
+    tbody.innerHTML = '<tr><td colspan="5"><div class="empty">Failed to load. Is the bot in this server?</div></td></tr>';
+  }
+}
+
+function renderAlts(filter) {
+  const tbody  = document.getElementById('alts-tbody');
+  const toShow = filter === 'all' ? allAlts : allAlts.filter(a => a.status === filter || (filter === 'pending' && a.status === 'pending'));
+  if (!toShow.length) {
+    tbody.innerHTML = '<tr><td colspan="5"><div class="empty">No entries found.</div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = toShow.map(a => `
+    <tr>
+      <td>
+        <div class="member-info">
+          <div class="m-av" style="background:rgba(255,165,2,.12);color:var(--yellow);">${a.username.slice(0,2).toUpperCase()}</div>
+          <div><div class="m-name">${escHtml(a.username)}</div></div>
+        </div>
+      </td>
+      <td>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div style="width:45px;height:3px;background:var(--surface3);border-radius:2px;overflow:hidden;"><div style="width:${a.score}%;height:100%;background:${a.score>=85?'var(--red)':'var(--yellow)'};border-radius:2px;"></div></div>
+          <span style="font-family:'Space Mono',monospace;font-size:.72rem;">${a.score}%</span>
+        </div>
+      </td>
+      <td style="font-size:.78rem;color:var(--muted);max-width:220px;">${escHtml((a.reasons||[]).join(', '))}</td>
+      <td class="tag">${timeAgo(a.joined_at)}</td>
+      <td>
+        ${a.status === 'pending' ? `
+          <div style="display:flex;gap:5px;">
+            <button class="btn danger" style="font-size:.72rem;padding:4px 9px;" onclick="altAction(${a.id},'ban')">Ban</button>
+            <button class="btn" style="font-size:.72rem;padding:4px 9px;" onclick="altAction(${a.id},'dismiss')">Dismiss</button>
+          </div>` : `<span class="tag">${a.status}</span>`}
+      </td>
+    </tr>
+  `).join('');
+}
+
+function filterAlts(filter, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderAlts(filter);
+}
+
+async function altAction(altId, action) {
+  if (action === 'ban' && !confirm('Are you sure you want to ban this user?')) return;
+  try {
+    const r = await api(`/api/guild/${currentGuildId}/alt/${altId}/action`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({action})
+    });
+    if (r.success) await loadAlts();
+    else alert('Action failed: ' + (r.error || 'Unknown error'));
+  } catch(e) {
+    alert('Failed: ' + e.message);
+  }
+}
+
+// ─── VPN ───
+async function loadVPN() {
+  if (!currentGuildId) return;
+  const tbody = document.getElementById('vpn-tbody');
+  tbody.innerHTML = '<tr><td colspan="5"><div class="loading"><div class="spinner"></div>Loading...</div></td></tr>';
+  try {
+    const data = await api(`/api/guild/${currentGuildId}/vpn`);
+    if (!data.length) {
+      tbody.innerHTML = '<tr><td colspan="5"><div class="empty">✅ No VPN detections yet.</div></td></tr>';
+      return;
+    }
+    tbody.innerHTML = data.map(v => `
+      <tr>
+        <td>
+          <div class="member-info">
+            <div class="m-av" style="background:rgba(255,71,87,.12);color:var(--red);">${v.username.slice(0,2).toUpperCase()}</div>
+            <div class="m-name">${escHtml(v.username)}</div>
+          </div>
+        </td>
+        <td><span class="bdg vpn"><span class="bdg-dot"></span>${escHtml(v.detection_type)}</span></td>
+        <td style="font-size:.8rem;">${escHtml(v.provider||'Unknown')}</td>
+        <td style="font-size:.8rem;">${escHtml(v.country||'Unknown')}</td>
+        <td class="tag">${timeAgo(v.detected_at)}</td>
+      </tr>
+    `).join('');
+  } catch(e) {
+    tbody.innerHTML = '<tr><td colspan="5"><div class="empty">Failed to load.</div></td></tr>';
+  }
+}
+
+// ─── ANALYTICS ───
+async function loadAnalytics() {
+  if (!currentGuildId) return;
+  try {
+    const data = await api(`/api/guild/${currentGuildId}/stats`);
+    const history = data.history || [];
+
+    new Chart(document.getElementById('analyticsGrowth'), {
+      type: 'line',
+      data: {
+        labels: history.map(h => h.date.slice(5)),
+        datasets: [{label:'Members',data:history.map(h=>h.count),borderColor:'#00e5ff',backgroundColor:'rgba(0,229,255,0.06)',fill:true,tension:0.4,pointRadius:2,pointBackgroundColor:'#00e5ff'}]
+      },
+      options:{...chartDefaults,responsive:true}
+    });
+
+    // Join/Leave (mock deltas from history)
+    const joins  = history.map((_,i) => i===0?0:Math.max(0,(history[i].count-history[i-1].count)));
+    const leaves = history.map((_,i) => i===0?0:Math.max(0,(history[i-1].count-history[i].count)));
+    new Chart(document.getElementById('joinLeaveChart'),{
+      type:'bar',
+      data:{
+        labels:history.map(h=>h.date.slice(5)),
+        datasets:[
+          {label:'Joins',data:joins,backgroundColor:'rgba(46,213,115,.7)',borderRadius:3},
+          {label:'Leaves',data:leaves,backgroundColor:'rgba(255,71,87,.6)',borderRadius:3}
+        ]
+      },
+      options:{...chartDefaults,responsive:true}
+    });
+  } catch(e) {}
+}
+
+// ─── NAVIGATION ───
+function showPage(name, navEl) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  if (navEl) navEl.classList.add('active');
+  if (name === 'members')   loadMembers();
+  if (name === 'alts')      loadAlts();
+  if (name === 'vpn')       loadVPN();
+  if (name === 'analytics') setTimeout(loadAnalytics, 50);
+}
+
+// ─── UTILS ───
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function guildColor(id) {
+  const colors = ['rgba(0,229,255,.15)','rgba(88,101,242,.15)','rgba(255,71,87,.15)','rgba(255,165,2,.15)','rgba(46,213,115,.15)'];
+  return colors[parseInt(id.slice(-1)) % colors.length];
+}
+function timeAgo(iso) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff/60000), h = Math.floor(m/60), d = Math.floor(h/24);
+  if (d > 0) return `${d}d ago`;
+  if (h > 0) return `${h}h ago`;
+  if (m > 0) return `${m}m ago`;
+  return 'just now';
+}
+
+// CLIENT_ID injected by backend (see app.py)
+const CLIENT_ID = document.currentScript?.dataset?.clientId || '';
+
+init();
+</script>
+</body>
+</html>
